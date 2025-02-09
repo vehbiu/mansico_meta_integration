@@ -74,12 +74,7 @@ from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta
 from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.sync_new_add import FetchLeads
 def validate_lead(doc, method=None):
     if not doc.is_new():
-        
-        import datetime
-        import json
-        now = datetime.datetime.now()
-        unixtime = int(now.timestamp())
-        if doc.custom_lead_json:
+        if doc.custom_meta_lead_id:
             old_doc = doc.get_doc_before_save()
             if old_doc.status != doc.status:
                 lead = frappe.get_doc("Lead", doc.name)

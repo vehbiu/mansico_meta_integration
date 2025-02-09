@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"kV9jRvU-En\",\"type\":\"card\",\"data\":{\"card_name\":\"Facebook Integration\",\"col\":4}},{\"id\":\"KkNZ0g8hFS\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Meta Leads</span>\",\"col\":12}}]",
+ "content": "[{\"id\":\"kV9jRvU-En\",\"type\":\"card\",\"data\":{\"card_name\":\"Facebook Integration\",\"col\":4}}]",
  "creation": "2024-01-12 04:12:45.415313",
  "custom_blocks": [],
  "docstatus": 0,
@@ -14,10 +14,11 @@
  "label": "Meta Leads",
  "links": [
   {
+   "description": "Welcome To Mansico Meta Integration Go throw the doctypes below sequentially",
    "hidden": 0,
    "is_query_report": 0,
    "label": "Facebook Integration",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -45,16 +46,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Read By",
-   "link_count": 0,
-   "link_to": "Read By",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Sync Leads",
    "link_count": 0,
    "link_to": "Sync New Add",
@@ -63,7 +54,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-01-12 04:13:07.395469",
+ "modified": "2025-02-09 20:20:35.643671",
  "modified_by": "Administrator",
  "module": "Mansico Meta Integration",
  "name": "Meta Leads",

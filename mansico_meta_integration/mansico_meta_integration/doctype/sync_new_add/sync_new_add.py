@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+
 @frappe.whitelist()
 def get_credentials():
     return frappe.get_doc("Meta Facebook Settings")
@@ -64,6 +65,8 @@ class AppendForms():
     def append_forms(self):
         if self.doc.force_fetch:
             self.doc.set("table_hsya", [])
+            
+
             for lead_form in self.lead_forms.get("data"):
                 self.doc.append("table_hsya", {
                     "form_id": lead_form.get("id"),
@@ -73,6 +76,47 @@ class AppendForms():
                     "page": lead_form.get("page"),
                     "questions": frappe._dict({"questions":lead_form.get("questions")}),
                 })
+        if self.doc.fetch_map_lead_fields:
+            self.doc.set("map_lead_fields", [])
+            form_fields = []  # Initialize an empty list to track form fields
+            for lead in self.doc.table_hsya:
+                self.set_map_lead_fields(json.loads(lead.questions).get("questions") , form_fields)
+
+    def set_map_lead_fields(self, questions, form_fields):
+        for question in questions:
+            if question.get("key") not in form_fields:  # Check if the key is not already in the list
+                if question.get("type") == "EMAIL":
+                    self.doc.append("map_lead_fields", {
+                        "lead_field": "email_id",
+                        "form_field": question.get("key"),
+                        "form_field_label": question.get("label"),
+                        "form_field_type": question.get("type"),
+                    })
+                elif question.get("type") == "FULL_NAME":
+                    self.doc.append("map_lead_fields", {
+                        "lead_field": "full_name",
+                        "form_field": question.get("key"),
+                        "form_field_label": question.get("label"),
+                        "form_field_type": question.get("type"),
+                    })
+                elif question.get("type") == "PHONE":
+                    self.doc.append("map_lead_fields", {
+                        "lead_field": "phone_number",
+                        "form_field": question.get("key"),
+                        "form_field_label": question.get("label"),
+                        "form_field_type": question.get("type"),
+                    })
+                elif question.get("type") == "CUSTOM":
+                    self.doc.append("map_lead_fields", {
+                        "lead_field": question.get("key"),
+                        "form_field": question.get("key"),
+                        "form_field_label": question.get("label"),
+                        "form_field_type": question.get("type"),
+                    })
+                # Add the key to form_fields to avoid duplicating it
+                form_fields.append(question.get("key"))
+
+      
 class ServerScript():
     def __init__(self, doc):
         self.doc = doc
@@ -171,42 +215,65 @@ class FetchLeads():
             return lead_forms
     def create_lead(self, leads):
         import traceback
+        
         for lead in leads:
-            if not frappe.db.exists("Lead", {"email_id": lead.get("field_data")[1].get("values")[0]}):
-                new_lead = frappe.get_doc({
-                    "doctype": "Lead",
-                    "first_name": lead.get("field_data")[0].get("values")[0],
-                    "email_id": lead.get("field_data")[1].get("values")[0],
-                    "mobile_no": lead.get("field_data")[2].get("values")[0],
-                    "job_title" : lead.get("field_data")[3].get("values")[0],
-                    "company_name": lead.get("field_data")[4].get("values")[0],
-                    "custom_lead_json" : frappe._dict(lead),
-                })
-                try:
-                    new_lead.insert(ignore_permissions=True)
-                    # create lead in facebook
-                    FetchLeads.create_lead_in_facebook(new_lead)
-                except Exception as e:
+            # Initialize an empty dictionary to store lead data dynamically
+            lead_data = {}
+            frappe.msgprint(str(lead))
+            
+            # Loop through the field_data and extract the values dynamically
+            for field in lead.get("field_data", []):
+                field_name = field.get("name")
+                field_value = field.get("values", [None])[0]  # Get the first value or None if no value is present
+                
+                # Check if the field_name exists in the map_lead_fields of the current doc
+                for mapping in self.doc.map_lead_fields:
+                    if mapping.get("form_field") == field_name:
+                        # Dynamically map field_data to the Lead fields based on map_lead_fields
+                        lead_data[mapping.get("lead_field")] = field_value
 
-                    frappe.log_error( "error",str(e))
-                    frappe.log_error( "traceback", str(traceback.format_exc()))
-                    frappe.log_error( "new_lead", str(new_lead))
+
+            if lead.get("id") and not frappe.db.exists("Lead", {"custom_meta_lead_id": lead.get("id")}):
+                try:
+                    # Create a new Lead document dynamically based on available fields
+                    new_lead_data = {
+                        "doctype": "Lead",
+                        "custom_meta_lead_id": lead.get("id"),
+                        "custom_lead_json": frappe._dict(lead),  
+                    }
+
+                    # Dynamically populate lead fields from lead_data
+                    for field_name, field_value in lead_data.items():
+                        new_lead_data[field_name] = field_value
+
+                    new_lead = frappe.get_doc(new_lead_data)
+                    new_lead.insert(ignore_permissions=True)
+
+                    # Optionally, create the lead in Facebook
+                    FetchLeads.create_lead_in_facebook(new_lead)
+
+                except Exception as e:
+                    # Log errors and traceback for better debugging
+                    frappe.log_error("Error in Lead Creation", str(e))
+                    frappe.log_error("Traceback", str(traceback.format_exc()))
+                    frappe.log_error("Lead Data", str(lead_data))
+
     
     @staticmethod
     def create_lead_in_facebook(lead):
         import datetime
         import json
         from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta_integraion_objects import UserData, CustomData, Payload
-        import ast
+
         now = datetime.datetime.now()
         unixtime = int(now.timestamp())
-        if lead.custom_lead_json:
+        if lead.custom_meta_lead_id:
             payload = Payload(
                 event_name=lead.status,
                 event_time=unixtime ,
                 action_source="system_generated",
-                user_data=UserData(lead.custom_lead_json.get("id") if not isinstance(lead.custom_lead_json, str) else json.loads(lead.custom_lead_json).get("id")).__dict__,
-                custom_data=CustomData("crm", "ERP next").__dict__
+                user_data=UserData(lead.custom_meta_lead_id).__dict__,
+                custom_data=CustomData("crm", "ERP Next").__dict__
             )    
             f_payload = frappe._dict({"data": [payload.__dict__]})
             # send request to facebook
@@ -257,7 +324,18 @@ class SyncNewAdd(Document):
         # append forms
         append_forms.append_forms()
 
+
+    def check_email_id(self):
+        first_name =  False
+        for row in self.map_lead_fields:
+            if row.lead_field == "first_name":
+                first_name = True
+        if not first_name:
+            frappe.throw("Please map First Name Field")
+
+
     def on_submit(self):
+        self.check_email_id()
         # create Server Script
         server_script = ServerScript(self)
         server_script.create_server_script()

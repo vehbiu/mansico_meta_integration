@@ -8,20 +8,21 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_qhoi",
-  "amended_from",
+  "column_break_rlez",
   "column_break_jjze",
   "naming_series",
-  "ad_details_section",
-  "read_by",
-  "column_break_htek",
+  "section_break_dtxi",
   "based_on",
-  "column_break_zbhi",
+  "column_break_tjpy",
   "last_sync_time",
   "section_break_msmq",
   "page_id",
   "form_id",
   "column_break_blgv",
   "event_frequency",
+  "section_break_snbb",
+  "fetch_map_lead_fields",
+  "map_lead_fields",
   "meta_forms_section",
   "force_fetch",
   "table_hsya",
@@ -55,33 +56,12 @@
    "options": "AD-SYNC-"
   },
   {
-   "fieldname": "ad_details_section",
-   "fieldtype": "Section Break",
-   "label": "AD Details"
-  },
-  {
-   "fieldname": "read_by",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Read",
-   "options": "Read By",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_htek",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "based_on",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Based On",
    "options": "\nPage ID",
    "reqd": 1
-  },
-  {
-   "fieldname": "column_break_zbhi",
-   "fieldtype": "Column Break"
   },
   {
    "fetch_from": "read_by.last_sync_time",
@@ -144,12 +124,41 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_rlez",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_dtxi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_tjpy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_snbb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "Lead Field Name\nYou Must set field name same as field name in Lead",
+   "fieldname": "map_lead_fields",
+   "fieldtype": "Table",
+   "label": "Map Lead Fields",
+   "options": "Map Lead Field"
+  },
+  {
+   "default": "0",
+   "fieldname": "fetch_map_lead_fields",
+   "fieldtype": "Check",
+   "label": "Fetch Map Lead Fields"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-01-12 04:09:09.565387",
+ "modified": "2025-02-09 19:10:32.087707",
  "modified_by": "Administrator",
  "module": "Mansico Meta Integration",
  "name": "Sync New Add",
