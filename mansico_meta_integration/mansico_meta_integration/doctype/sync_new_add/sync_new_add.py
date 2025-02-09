@@ -80,7 +80,7 @@ class AppendForms():
             self.doc.set("map_lead_fields", [])
             form_fields = []  # Initialize an empty list to track form fields
             for lead in self.doc.table_hsya:
-                self.set_map_lead_fields(json.loads(lead.questions).get("questions") , form_fields)
+                self.set_map_lead_fields(json.loads(lead.questions).get("questions") if isinstance(lead.questions, str) else lead.questions.get("questions"), form_fields)
 
     def set_map_lead_fields(self, questions, form_fields):
         for question in questions:
