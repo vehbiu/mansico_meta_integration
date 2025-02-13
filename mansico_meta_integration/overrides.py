@@ -70,7 +70,7 @@ def safe_exec(
 		)
 
 	return exec_globals, _locals
-from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta_integraion_objects import UserData, CustomData, Payload
+
 from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.sync_new_add import FetchLeads
 def validate_lead(doc, method=None):
     if not doc.is_new():
@@ -78,5 +78,13 @@ def validate_lead(doc, method=None):
             old_doc = doc.get_doc_before_save()
             if old_doc.status != doc.status:
                 lead = frappe.get_doc("Lead", doc.name)
+                FetchLeads.create_lead_in_facebook(lead)
+            
+def validate_crmlead(doc, method=None):
+    if not doc.is_new():
+        if doc.custom_meta_lead_id:
+            old_doc = doc.get_doc_before_save()
+            if old_doc.status != doc.status:
+                lead = frappe.get_doc("CRM Lead", doc.name)
                 FetchLeads.create_lead_in_facebook(lead)
             

@@ -168,9 +168,11 @@ class FetchLeads():
         for form in self.doc.table_hsya:
             form_ids.append(form.form_id)
         return form_ids
+
     @frappe.whitelist()
     def fetch_leads(self):
         self.doc = frappe.get_doc("Sync New Add", self.name.upper().replace("_","-"))
+        self.page = frappe.get_doc("Page ID", self.doc.page_id)
         self.form_ids = self.get_form_ids
         for form_id in self.form_ids:
             defaults = get_credentials()
@@ -215,12 +217,9 @@ class FetchLeads():
             return lead_forms
     def create_lead(self, leads):
         import traceback
-        
         for lead in leads:
             # Initialize an empty dictionary to store lead data dynamically
-            lead_data = {}
-            frappe.msgprint(str(lead))
-            
+            lead_data = {}            
             # Loop through the field_data and extract the values dynamically
             for field in lead.get("field_data", []):
                 field_name = field.get("name")
@@ -232,12 +231,11 @@ class FetchLeads():
                         # Dynamically map field_data to the Lead fields based on map_lead_fields
                         lead_data[mapping.get("lead_field")] = field_value
 
-
-            if lead.get("id") and not frappe.db.exists("Lead", {"custom_meta_lead_id": lead.get("id")}):
+            if lead.get("id") and not frappe.db.exists(self.doc.lead_doctype_name, {"custom_meta_lead_id": lead.get("id")}):
                 try:
                     # Create a new Lead document dynamically based on available fields
                     new_lead_data = {
-                        "doctype": "Lead",
+                        "doctype": self.doc.lead_doctype_name,
                         "custom_meta_lead_id": lead.get("id"),
                         "custom_lead_json": frappe._dict(lead),  
                     }
@@ -250,7 +248,7 @@ class FetchLeads():
                     new_lead.insert(ignore_permissions=True)
 
                     # Optionally, create the lead in Facebook
-                    FetchLeads.create_lead_in_facebook(new_lead)
+                    FetchLeads.create_lead_in_facebook(new_lead, self.page)
 
                 except Exception as e:
                     # Log errors and traceback for better debugging
@@ -260,7 +258,7 @@ class FetchLeads():
 
     
     @staticmethod
-    def create_lead_in_facebook(lead):
+    def create_lead_in_facebook(lead, page):
         import datetime
         import json
         from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta_integraion_objects import UserData, CustomData, Payload
@@ -280,7 +278,7 @@ class FetchLeads():
             defaults = get_credentials()
             #  init Request
             request = Request(defaults.api_url, defaults.graph_api_version,
-            defaults.pixel_id + "/events", f_payload, params={"access_token": defaults.pixel_access_token})
+            page.pixel_id + "/events", f_payload, params={"access_token": page.pixel_access_token})
             # init RequestSendLead
             request_send_lead = RequestSendLead(request)
             # send lead
@@ -334,7 +332,40 @@ class SyncNewAdd(Document):
             frappe.throw("Please map First Name Field")
 
 
+    def check_meta_fields_found(self):
+        if frappe.get_meta(self.lead_doctype_name).has_field("custom_meta_lead_id"):
+            pass
+        else:
+            # create custom fields
+            frappe.get_doc({
+                "doctype": "Custom Field",
+                "dt": "Lead",
+                "fieldname": "custom_meta_lead_id",
+                "label": "Custom Meta Lead ID",
+                "fieldtype": "Data",
+                "insert_after": "name",
+                "read_only": 1,
+
+            }).insert(ignore_permissions=True)
+        if frappe.get_meta(self.lead_doctype_name).has_field("custom_lead_json"):
+            pass
+        else:
+            # create custom fields
+            frappe.get_doc({
+                "doctype": "Custom Field",
+                "dt": "Lead",
+                "fieldname": "custom_lead_json",
+                "label": "Custom Lead JSON",
+                "fieldtype": "Text",
+                "insert_after": "custom_meta_lead_id",
+                "read_only": 1,
+
+            }).insert(ignore_permissions=True)
+        
+
+        
     def on_submit(self):
+        self.check_meta_fields_found()
         self.check_email_id()
         # create Server Script
         server_script = ServerScript(self)

@@ -7,18 +7,15 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_0lkx",
-  "last_sync_datetime",
-  "app_secret",
-  "audience_name",
-  "pixel_id",
-  "pixel_access_token",
-  "graph_api_version",
-  "column_break_nezf",
   "access_token",
-  "ad_account_id",
-  "audience_retention_days",
+  "graph_api_version",
+  "api_url",
+  "audience_name",
+  "column_break_nezf",
+  "app_secret",
   "app_id",
-  "api_url"
+  "ad_account_id",
+  "audience_retention_days"
  ],
  "fields": [
   {
@@ -26,34 +23,14 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "last_sync_datetime",
-   "fieldtype": "Float",
-   "label": "last sync datetime",
-   "read_only": 1
-  },
-  {
    "fieldname": "app_secret",
    "fieldtype": "Data",
-   "label": "app_secret"
+   "label": "App Secret"
   },
   {
    "fieldname": "audience_name",
    "fieldtype": "Data",
-   "label": "audience_name"
-  },
-  {
-   "fieldname": "pixel_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "pixel_id",
-   "reqd": 1
-  },
-  {
-   "fieldname": "pixel_access_token",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Pixel Access Token",
-   "reqd": 1
+   "label": "Audience Name"
   },
   {
    "fieldname": "graph_api_version",
@@ -76,17 +53,17 @@
   {
    "fieldname": "ad_account_id",
    "fieldtype": "Data",
-   "label": "ad_account_id"
+   "label": "AD Account ID"
   },
   {
    "fieldname": "audience_retention_days",
    "fieldtype": "Data",
-   "label": "audience_retention_days"
+   "label": "Audience Retention Days"
   },
   {
    "fieldname": "app_id",
    "fieldtype": "Data",
-   "label": "app_id"
+   "label": "App ID"
   },
   {
    "fieldname": "api_url",
@@ -98,7 +75,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-01-12 04:03:00.629477",
+ "modified": "2025-02-12 21:58:54.139663",
  "modified_by": "Administrator",
  "module": "Mansico Meta Integration",
  "name": "Meta Facebook Settings",

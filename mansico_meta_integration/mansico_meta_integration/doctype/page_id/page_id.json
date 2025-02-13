@@ -9,6 +9,8 @@
  "field_order": [
   "page_id",
   "name1",
+  "pixel_id",
+  "pixel_access_token",
   "page_json"
  ],
  "fields": [
@@ -31,12 +33,27 @@
   {
    "fieldname": "page_json",
    "fieldtype": "JSON",
-   "label": "page_json"
+   "label": "page_json",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pixel_access_token",
+   "fieldtype": "Small Text",
+   "label": "Pixel Access Token",
+   "reqd": 1
+  },
+  {
+   "fieldname": "pixel_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Pixel ID",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-01-12 04:02:35.302590",
+ "modified": "2025-02-12 21:30:54.210403",
  "modified_by": "Administrator",
  "module": "Mansico Meta Integration",
  "name": "Page ID",

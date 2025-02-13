@@ -11,14 +11,11 @@
   "column_break_rlez",
   "column_break_jjze",
   "naming_series",
-  "section_break_dtxi",
-  "based_on",
-  "column_break_tjpy",
-  "last_sync_time",
   "section_break_msmq",
+  "based_on",
   "page_id",
-  "form_id",
   "column_break_blgv",
+  "lead_doctype_name",
   "event_frequency",
   "section_break_snbb",
   "fetch_map_lead_fields",
@@ -64,13 +61,6 @@
    "reqd": 1
   },
   {
-   "fetch_from": "read_by.last_sync_time",
-   "fieldname": "last_sync_time",
-   "fieldtype": "Float",
-   "label": "Last Sync Time",
-   "read_only": 1
-  },
-  {
    "fieldname": "section_break_msmq",
    "fieldtype": "Section Break"
   },
@@ -78,15 +68,11 @@
    "depends_on": "eval:doc.based_on==\"Page ID\"",
    "fieldname": "page_id",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Page ID",
    "mandatory_depends_on": "eval:doc.based_on==\"Page ID\"",
    "options": "Page ID"
-  },
-  {
-   "depends_on": "eval:doc.based_on==\"Form ID\"",
-   "fieldname": "form_id",
-   "fieldtype": "Data",
-   "label": "Form ID"
   },
   {
    "fieldname": "column_break_blgv",
@@ -130,14 +116,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "section_break_dtxi",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_tjpy",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "section_break_snbb",
    "fieldtype": "Section Break"
   },
@@ -153,12 +131,21 @@
    "fieldname": "fetch_map_lead_fields",
    "fieldtype": "Check",
    "label": "Fetch Map Lead Fields"
+  },
+  {
+   "default": "Lead",
+   "fieldname": "lead_doctype_name",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lead Doctype Name",
+   "options": "Lead\nCRM Lead"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-09 19:10:32.087707",
+ "modified": "2025-02-12 21:33:44.514328",
  "modified_by": "Administrator",
  "module": "Mansico Meta Integration",
  "name": "Sync New Add",
