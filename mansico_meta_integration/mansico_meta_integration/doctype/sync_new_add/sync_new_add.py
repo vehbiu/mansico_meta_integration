@@ -10,6 +10,7 @@ def get_credentials():
 
 import requests
 import json
+
 class Request:
     def __init__(self, url, version, page_id, f_payload=None, params=None):
         self.url = url
@@ -94,7 +95,7 @@ class AppendForms():
                     })
                 elif question.get("type") == "FULL_NAME":
                     self.doc.append("map_lead_fields", {
-                        "lead_field": "full_name",
+                        "lead_field": "first_name",
                         "form_field": question.get("key"),
                         "form_field_label": question.get("label"),
                         "form_field_type": question.get("type"),
@@ -132,7 +133,7 @@ class ServerScript():
         })
     def generate_script(self):
         _script = ""
-        import os
+
         _script += """from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.sync_new_add import FetchLeads\n"""
         _script += """import frappe\n"""
         _script += """fetch = FetchLeads("{0}")\n""".format(str(str(self.doc.name).replace("-", "_")).lower())
@@ -171,7 +172,7 @@ class FetchLeads():
 
     @frappe.whitelist()
     def fetch_leads(self):
-        self.doc = frappe.get_doc("Sync New Add", self.name.upper().replace("_","-"))
+        self.doc = frappe.get_doc("Sync New Add", self.name)
         self.page = frappe.get_doc("Page ID", self.doc.page_id)
         self.form_ids = self.get_form_ids
         for form_id in self.form_ids:
@@ -196,6 +197,7 @@ class FetchLeads():
             request_lead_gen_forms = RequestLeadGenFroms(request)
             # get lead forms
             request_lead_gen_forms.get_lead_forms()
+
             if request_lead_gen_forms.lead_forms.get("data"):
                 # use self.lead_forms
                 # fetch all leads then create them using create_lead
@@ -217,6 +219,7 @@ class FetchLeads():
             return lead_forms
     def create_lead(self, leads):
         import traceback
+
         for lead in leads:
             # Initialize an empty dictionary to store lead data dynamically
             lead_data = {}            
@@ -233,6 +236,7 @@ class FetchLeads():
 
             if lead.get("id") and not frappe.db.exists(self.doc.lead_doctype_name, {"custom_meta_lead_id": lead.get("id")}):
                 try:
+
                     # Create a new Lead document dynamically based on available fields
                     new_lead_data = {
                         "doctype": self.doc.lead_doctype_name,
@@ -265,31 +269,47 @@ class FetchLeads():
 
         now = datetime.datetime.now()
         unixtime = int(now.timestamp())
+        
         if lead.custom_meta_lead_id:
+            # Create UserData and CustomData objects
+            user_data = UserData(lead.custom_meta_lead_id)
+            custom_data = CustomData("crm", "ERP Next")
+
+            # Create Payload object
             payload = Payload(
                 event_name=lead.status,
-                event_time=unixtime ,
+                event_time=unixtime,
                 action_source="system_generated",
-                user_data=UserData(lead.custom_meta_lead_id).__dict__,
-                custom_data=CustomData("crm", "ERP Next").__dict__
-            )    
-            f_payload = frappe._dict({"data": [payload.__dict__]})
-            # send request to facebook
+                user_data=user_data,
+                custom_data=custom_data
+            )
+
+            # Convert Payload to dictionary
+            f_payload = {"data": [payload.to_dict()]}
+
+            # Send request to Facebook
             defaults = get_credentials()
-            #  init Request
-            request = Request(defaults.api_url, defaults.graph_api_version,
-            page.pixel_id + "/events", f_payload, params={"access_token": page.pixel_access_token})
-            # init RequestSendLead
+            request = Request(
+                defaults.api_url,
+                defaults.graph_api_version,
+                page.pixel_id + "/events",
+                f_payload,
+                params={"access_token": page.pixel_access_token}
+            )
+
+            # Send the lead
             request_send_lead = RequestSendLead(request)
-            # send lead
             response = request_send_lead.send_lead()
-            #  insert to note with
+
+            # Insert a note with the response and payload
             note = frappe.get_doc({
                 "doctype": "Note",
                 "title": "Lead Created in Facebook Successfully",
                 "public": 1,
-                "content": "Lead Created in Facebook Successfully <br> Response: " 
-                + str(response) + "<br> Payload: " + str(f_payload),
+                "content": (
+                    "Lead Created in Facebook Successfully <br> Response: " 
+                    + str(response) + "<br> Payload: " + json.dumps(f_payload, indent=2)
+                ),
                 "custom_reference_name": lead.name,
             })
             note.insert(ignore_permissions=True)
@@ -367,14 +387,16 @@ class SyncNewAdd(Document):
     def on_submit(self):
         self.check_meta_fields_found()
         self.check_email_id()
+        # i want to check if site hase enable_schedule = 1 
         # create Server Script
-        server_script = ServerScript(self)
-        server_script.create_server_script()
-        server_script.server_script.insert(ignore_permissions=True)
+        # server_script = ServerScript(self)
+        # server_script.create_server_script()
+        # server_script.server_script.insert(ignore_permissions=True)
         # frappe.db.commit()
-        frappe.msgprint("Server Script Created Successfully")
+        # frappe.msgprint("Server Script Created Successfully")
 
     def on_cancel(self):
+        pass
         # delete Server Script
-        frappe.delete_doc("Server Script", str(self.name).lower().replace("-","_"), ignore_permissions=True)
-        frappe.msgprint("Server Script Deleted Successfully")
+        # frappe.delete_doc("Server Script", str(self.name).lower().replace("-","_"), ignore_permissions=True)
+        # frappe.msgprint("Server Script Deleted Successfully")
