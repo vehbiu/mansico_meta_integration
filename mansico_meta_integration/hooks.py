@@ -13,9 +13,8 @@ doc_events = {
     }
 }
 
-import frappe
-if frappe.db.exists("DocType", "CRM Lead"):
-    doc_events["CRM Lead"] = {
+
+doc_events["CRM Lead"] = {
         "validate": "mansico_meta_integration.overrides.validate_crmlead",
     }
 # Scheduled Tasks
