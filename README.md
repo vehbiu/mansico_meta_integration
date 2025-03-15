@@ -1,177 +1,140 @@
-## Mansico Meta Integration
+# Mansico Meta Integration
 
 <div align="center">
     <img src="https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/4080cbd5-6f5f-48fe-877d-e28e5e795bf8" height="128">
-    <h2>Mansico Meta Integration</h2>
+    <h2>Seamlessly Sync Facebook Leads with ERPNext</h2>
 </div>
-This project is about syncing Facebook leads with ERPnext, When Clients fill Facebook ads instant forms app automatic fetch new created leads and create lead automatic in Lead doctype. Also on changing the Lead Status the new status sent to meta Pixel.
 
-
----
-
-### How to Install
-
-#### Frappe Cloud:
-
-One-click installing available if you are hosting on FC from [here](https://frappecloud.com/marketplace/apps/mansico_meta_integration)
-still didn't get the approve, stay tuned once accepted it will be live on FC
-#### Self Hosting:
-
-1. `bench get-app https://github.com/splinter-NGoH/mansico_meta_integration.git`
-2. `bench --site [your.site.name] install-app mansico_meta_integration`
-3. `bench --site [your.site.name] migrate`
+**Mansico Meta Integration** is an open-source application designed to automate the synchronization of Facebook leads with ERPNext. When clients fill out Facebook Ads instant forms, the app automatically fetches the newly created leads and generates corresponding entries in ERPNext's **Lead** doctype. Additionally, when the Lead Status is updated in ERPNext, the new status is sent back to the Meta Pixel for real-time tracking and analytics.
 
 ---
 
-## Facebook Requirements:
+## Key Features
 
-- Meta Business Account
-  you have to create if not already having meta business account use this [link](https://www.facebook.com/business/help/1710077379203657?id=180505742745347) for help
-- App Create Meta Business Settings
-  to continue this tutorial u must create meta app following these steps:
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/70138d92-07c2-4e05-8a6b-a408854a3900)
-
----
-
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/9fd7cf1d-dbf1-42f1-8195-804a6c1038d8)
+- **Automated Lead Sync**: Fetches new leads from Facebook Ads instant forms and creates them in ERPNext automatically.
+- **Real-Time Status Updates**: Sends updated lead statuses from ERPNext back to the Meta Pixel for enhanced tracking.
+- **Customizable Sync Frequency**: Configure how often the app fetches new leads (e.g., every 15 minutes, hourly, etc.).
+- **Seamless Integration**: Works with Meta Business Accounts, Marketing API, and ERPNext for a smooth setup process.
+- **Open-Source and Extendable**: Fully customizable to meet specific business needs.
 
 ---
 
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/3cb79346-2df9-468f-aeb9-fd86f4aa53d9)
+## Installation
+
+### Frappe Cloud (One-Click Install)
+Once approved, the app will be available for one-click installation on [Frappe Cloud Marketplace](https://frappecloud.com/marketplace/apps/mansico_meta_integration). Stay tuned for updates!
+
+### Self-Hosting
+
+1. **Clone the App Repository**:
+   ```bash
+   bench get-app https://github.com/splinter-NGoH/mansico_meta_integration.git
+   ```
+
+2. **Install the App**:
+   ```bash
+   bench --site [your.site.name] install-app mansico_meta_integration
+   ```
+
+3. **Run Database Migrations**:
+   ```bash
+   bench --site [your.site.name] migrate
+   ```
 
 ---
 
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/0019f6b9-83c5-48a7-bf55-ff66b5c6e405)
+## Facebook Requirements
 
+To use this integration, you need the following:
 
----
+1. **Meta Business Account**:
+   - If you don’t already have one, create a [Meta Business Account](https://www.facebook.com/business/help/1710077379203657?id=180505742745347).
 
-after creating your app go through Marketing Api Set up
+2. **Meta App**:
+   - Create a Meta App to access the Marketing API. Follow the steps below:
+     ![Meta App Creation](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/70138d92-07c2-4e05-8a6b-a408854a3900)
 
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/7b81826e-1ffe-46e7-9954-b7b38d522f8e)
+3. **Marketing API Setup**:
+   - Enable the Marketing API for your app.
+     ![Marketing API Setup](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/7b81826e-1ffe-46e7-9954-b7b38d522f8e)
 
----
+4. **Access Token for System User**:
+   - Go to **Meta Settings > Users > System Users** and add a new user or use an existing one.
+   - Assign the necessary permissions (`leads_retrieval`, `manage_pages`, `ads_management`, `business_management`).
+   - Generate an access token and copy it.
+     ![Access Token Generation](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/273d3c1b-766e-4bab-9b2e-fca3213b916b)
 
-- Access Tocken of admin System User
-  after creating the app go back Meta settings > Users > System users > add
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/4b4bafec-78ad-4893-b365-1c2ced25f555)
-
-  after user created u will be prompet to choose permissions make sure to check all check boxes also dont forget to include the app
-  we created moment before and also allow all check boxes
-  now there is a access token generated for you make sure to copy the token and past it in access token field in your system in Meta Facebook Settings
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/273d3c1b-766e-4bab-9b2e-fca3213b916b)
-
-  if you already have admin System user just Generate new token and paste it in your System like image above.
-  
----
-
-- Pixel ID
-- Pixel Access Token
-  to get your pixel id and access token got to Events Manger
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/ab602583-2c5c-4682-b85d-5a1dc49c0c58)
-
-  ---
-
-  from left menu choose
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/1d43af36-24fa-4f58-b960-5cfe93e76393)
-
-  now create and connect your crm
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/0ce3ad11-4b76-4024-a37a-4d64eb8d7884)
-
-  NOW continue setup your pixel CRM
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/0a5dec15-c93f-4f3c-bd93-4b430f6d279a)
-
-  from menu choose Learn how
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/80308a38-81e8-4376-a381-d03b7d0ad71a)
-
-  in Create endpoint section
-  Generate  Access Token
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/8dd287ee-4903-4285-9ba4-2808a7827aa9)
-
-  then paste it in your system
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/eeab771d-f32e-4cc4-9f41-fd44311d2114)
-
-  also get the pixel id and paste it in system
-
-  ![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/ca090b9a-1cb7-4037-a221-de733f571b54)
-
+5. **Pixel ID and Pixel Access Token**:
+   - Go to **Events Manager** in your Meta Business Account.
+   - Locate your Pixel ID and generate a Pixel Access Token.
+     ![Pixel Setup](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/8dd287ee-4903-4285-9ba4-2808a7827aa9)
 
 ---
 
-Now you almost Ready 
+## Configuration in ERPNext
 
-now fill the api url and graph api version like img below 
+1. **Meta Facebook Settings**:
+   - Paste the **Access Token** in the respective field.
+   - Set the **API URL** (e.g., `https://graph.facebook.com`) and **Graph API Version** (e.g., `v16.0`).
+     ![Meta Settings](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/d802a857-7807-4cd6-ae4e-cef10466816a)
 
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/d802a857-7807-4cd6-ae4e-cef10466816a)
+2. **Page ID Doctype**:
+   - Add your Facebook Page Name, Page ID, Pixel ID, and Pixel Access Token.
+     ![Page ID Setup](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/164bbb69-9539-4579-a7bf-568d91c74bcc)
 
+3. **Sync New Lead**:
+   - Create a new sync job and configure the **Event Frequency** (e.g., every 15 minutes).
+   - Ensure the **Lead Status Mapping** is correctly set up.
+     ![Sync Setup](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/4cbc636a-181b-483d-9e25-7bc15cf9c5dd)
 
----
+4. **Schedule Job**:
+   - The sync job will be queued. You can manually execute it from **Schedule Job Type**.
+     ![Schedule Job](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/89f8893d-165e-4700-a939-76e8b5e9fa04)
 
-now go to Page ID doctype and add you page name and id 
-
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/164bbb69-9539-4579-a7bf-568d91c74bcc)
-
-
-now go too  New Read By 
-
-and add 
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/ed73238f-a54b-4c67-a515-f3d0d23f9072)
-
-
-`All Leads` as img above make sure you spell it right
-
----
-
-Finally got to sync new add 
-
-and create new sync
-
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/4cbc636a-181b-483d-9e25-7bc15cf9c5dd)
-
-after saving and submit it will fetch all current available forms and make schedule job depends on the Event Frequency you choose to fetch and create new leads for every interval you choos 
-
-![datad](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/15e25a56-9c67-4df3-ac51-c10d58424912)
+5. **Verify Leads**:
+   - Check the **Lead** doctype to confirm that new leads have been created.
 
 ---
 
-Now your job is queued 
+## Support the Project
 
-![datad](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/f822733d-4c45-49b6-8ad9-fd8bbe30d09e)
+If you find this project useful, consider supporting its development! Your contributions help maintain and improve the app.
 
----
-
-to check every thing is fine go to Schedule Job Type you will find newely created sync 
-
-execute it manually by clicking on execute button top right
-
-![image](https://github.com/splinter-NGoH/mansico_meta_integration/assets/73743592/89f8893d-165e-4700-a939-76e8b5e9fa04)
-
-then you should find the new leads created in Lead Doctype 
-
-### Dependencies:
-
-- [Frappe](https://github.com/frappe/frappe)
-- [Erpnext](https://github.com/frappe/erpnext)
+[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-blue?logo=paypal)](https://paypal.me/AhmedMansyArt?country.x=EG&locale.x=en_US)
 
 ---
 
-### License
+## Dependencies
 
-MIT
+- [Frappe Framework](https://github.com/frappe/frappe)
+- [ERPNext](https://github.com/frappe/erpnext)
 
 ---
 
-### Very Important Note
+## License
 
-This app will be having new updates as soon as possible also dont forget to star the repo
-Pull requests from Developers are very Welcome
-Hope you guys have another day of solving bugs 
-Cheers from Mansy!
+This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/splinter-NGoH/mansico_meta_integration/blob/main/LICENSE) file for details.
+
+---
+
+## Contributing
+
+We welcome contributions from the community! To contribute:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Submit a pull request with a detailed description of your changes.
+
+---
+
+## Support
+
+For support or questions, open an issue on the [GitHub repository](https://github.com/splinter-NGoH/mansico_meta_integration) or contact the maintainers.
+
+---
+
+## Important Note
+
+This app is actively maintained, and new updates will be released regularly. Don’t forget to ⭐️ the repository to show your support! Pull requests from developers are highly encouraged.
+
+Cheers from Mansy! 🚀
