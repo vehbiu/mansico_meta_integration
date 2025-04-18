@@ -22,7 +22,7 @@
 ## Installation
 
 ### Frappe Cloud (One-Click Install)
-Once approved, the app will be available for one-click installation on [Frappe Cloud Marketplace](https://frappecloud.com/marketplace/apps/mansico_meta_integration). Stay tuned for updates!
+Great new now available for FREE on [Frappe Cloud Marketplace](https://frappecloud.com/marketplace/apps/mansico_meta_integration). Stay tuned for updates!
 
 ### Self-Hosting
 
