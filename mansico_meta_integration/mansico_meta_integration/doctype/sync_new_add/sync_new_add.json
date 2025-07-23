@@ -82,7 +82,7 @@
    "fieldname": "event_frequency",
    "fieldtype": "Select",
    "label": "Event Frequency",
-   "options": "All\nHourly\nDaily\nWeekly\nMonthly"
+   "options": "All\nEvery 5 Minutes\nEvery 10 Minutes\nEvery 15 Minutes\nEvery 30 Minutes\nHourly\nDaily\nWeekly\nMonthly"
   },
   {
    "fieldname": "meta_forms_section",

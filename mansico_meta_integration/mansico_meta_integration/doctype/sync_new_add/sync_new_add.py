@@ -22,42 +22,33 @@ class Request:
     def get_url(self):
         return self.url + "/" + self.version + "/" + self.page_id
 
+def _handle_api_error(response, request, title="Error"):
+    """Centralized error handling for API responses."""
+    error_data = frappe._dict(response.json()).get("error")
+    if error_data:
+        error_message = f"url : {request.get_url}<br>params : {request.params}<br><br>"
+        error_message += "<br>".join([f"{key} : {value}" for key, value in error_data.items()])
+        frappe.throw(error_message, title=title)
+
 class RequestPageAccessToken():
     def __init__(self, request):
         self.request = request
 
     def get_page_access_token(self):
         response = requests.get(self.request.get_url, params=self.request.params, json=self.request.params) 
-        
-        if frappe._dict(response.json()).get("error"):
-            _error_message = ""
-            _error_message += "url" + " : " + str(self.request.get_url) + "<br>"
-            _error_message += "params" + " : " + str(self.request.params) + "<br>"
-            _error_message += "<br>"
-            for key in frappe._dict(response.json()).get("error").keys():
-                _error_message += key + " : " + str(frappe._dict(response.json()).get("error").get(key)) + "<br>"
-            frappe.throw(_error_message, title="Error")
-        else:
-            self.page_access_token = frappe._dict(response.json()).get("access_token")
-            return self.page_access_token
+        _handle_api_error(response, self.request)
+        self.page_access_token = frappe._dict(response.json()).get("access_token")
+        return self.page_access_token
 
 class RequestLeadGenFroms():
     def __init__(self, request):
         self.request = request
 
     def get_lead_forms(self):
-        response = requests.get(self.request.get_url, params=self.request.params, json=self.request.params) 
-        if frappe._dict(response.json()).get("error"):
-            _error_message = ""
-            _error_message += "url" + " : " + str(self.request.get_url) + "<br>"
-            _error_message += "params" + " : " + str(self.request.params) + "<br>"
-            _error_message += "<br>"
-            for key in frappe._dict(response.json()).get("error").keys():
-                _error_message += key + " : " + str(frappe._dict(response.json()).get("error").get(key)) + "<br>"
-            frappe.throw(_error_message, title="Error")
-        else:
-            self.lead_forms = frappe._dict(response.json())
-            return self.lead_forms
+        response = requests.get(self.request.get_url, params=self.request.params, json=self.request.params)
+        _handle_api_error(response, self.request)
+        self.lead_forms = frappe._dict(response.json())
+        return self.lead_forms
 
 class AppendForms():
     def __init__(self, lead_forms, doc):
@@ -84,53 +75,67 @@ class AppendForms():
                 self.set_map_lead_fields(json.loads(lead.questions).get("questions") if isinstance(lead.questions, str) else lead.questions.get("questions"), form_fields)
 
     def set_map_lead_fields(self, questions, form_fields):
+        field_type_mapping = {
+            "EMAIL": "email_id",
+            "FULL_NAME": "first_name",
+            "PHONE": "phone_number"
+        }
+        
         for question in questions:
-            if question.get("key") not in form_fields:  # Check if the key is not already in the list
-                if question.get("type") == "EMAIL":
-                    self.doc.append("map_lead_fields", {
-                        "lead_field": "email_id",
-                        "form_field": question.get("key"),
-                        "form_field_label": question.get("label"),
-                        "form_field_type": question.get("type"),
-                    })
-                elif question.get("type") == "FULL_NAME":
-                    self.doc.append("map_lead_fields", {
-                        "lead_field": "first_name",
-                        "form_field": question.get("key"),
-                        "form_field_label": question.get("label"),
-                        "form_field_type": question.get("type"),
-                    })
-                elif question.get("type") == "PHONE":
-                    self.doc.append("map_lead_fields", {
-                        "lead_field": "phone_number",
-                        "form_field": question.get("key"),
-                        "form_field_label": question.get("label"),
-                        "form_field_type": question.get("type"),
-                    })
-                elif question.get("type") == "CUSTOM":
-                    self.doc.append("map_lead_fields", {
-                        "lead_field": question.get("key"),
-                        "form_field": question.get("key"),
-                        "form_field_label": question.get("label"),
-                        "form_field_type": question.get("type"),
-                    })
-                # Add the key to form_fields to avoid duplicating it
-                form_fields.append(question.get("key"))
+            key = question.get("key")
+            if key not in form_fields:
+                question_type = question.get("type")
+                lead_field = field_type_mapping.get(question_type, key)
+                
+                self.doc.append("map_lead_fields", {
+                    "lead_field": lead_field,
+                    "form_field": key,
+                    "form_field_label": question.get("label"),
+                    "form_field_type": question_type,
+                })
+                form_fields.append(key)
 
       
 class ServerScript():
     def __init__(self, doc):
         self.doc = doc
     
+    def get_frappe_frequency(self):
+        """Map custom frequencies to valid Frappe scheduler frequencies."""
+        frequency_mapping = {
+            "Every 5 Minutes": "Cron",
+            "Every 10 Minutes": "Cron", 
+            "Every 15 Minutes": "Cron",
+            "Every 30 Minutes": "Cron"
+        }
+        return frequency_mapping.get(self.doc.event_frequency, self.doc.event_frequency)
+    
+    def get_cron_format(self):
+        """Get cron format for minute-based frequencies."""
+        cron_mapping = {
+            "Every 5 Minutes": "*/5 * * * *",
+            "Every 10 Minutes": "*/10 * * * *",
+            "Every 15 Minutes": "*/15 * * * *",
+            "Every 30 Minutes": "*/30 * * * *"
+        }
+        return cron_mapping.get(self.doc.event_frequency)
+    
     def create_server_script(self):
-        self.server_script = frappe.get_doc({
+        script_data = {
             "doctype": "Server Script",
             "name": str(str(self.doc.name).replace("-", "_")).lower(),
             "script_type": "Scheduler Event",
-            "event_frequency": self.doc.event_frequency,
+            "event_frequency": self.get_frappe_frequency(),
             "module": "Mansico Meta Integration",
             "script": self.generate_script()
-        })
+        }
+        
+        # Add cron format for minute-based frequencies
+        cron_format = self.get_cron_format()
+        if cron_format:
+            script_data["cron_format"] = cron_format
+            
+        self.server_script = frappe.get_doc(script_data)
     def generate_script(self):
         _script = ""
 
@@ -146,17 +151,9 @@ class RequestSendLead():
     def __init__(self, request):
         self.request = request
     def send_lead(self):
-        response = requests.post(self.request.get_url, params=self.request.params, json=self.request.f_payload) 
-        if frappe._dict(response.json()).get("error"):
-            error_message = ""
-            error_message += "url" + " : " + str(self.request.get_url) + "<br>"
-            error_message += "params" + " : " + str(self.request.params) + "<br>"
-            error_message += "<br>"
-            for key in json.dumps(response.json()).get("error").keys():
-                error_message += key + " : " + str(json.dumps(response.json()).get("error").get(key)) + "<br>"
-            frappe.throw(error_message, title="Error")
-        else:
-            return json.dumps(response.json())
+        response = requests.post(self.request.get_url, params=self.request.params, json=self.request.f_payload)
+        _handle_api_error(response, self.request)
+        return json.dumps(response.json())
 
 
 class FetchLeads():
@@ -251,8 +248,14 @@ class FetchLeads():
                     new_lead = frappe.get_doc(new_lead_data)
                     new_lead.insert(ignore_permissions=True)
 
-                    # Optionally, create the lead in Facebook
-                    FetchLeads.create_lead_in_facebook(new_lead, self.page)
+                    # Optionally, create the lead in Facebook (with error handling)
+                    try:
+                        FetchLeads.create_lead_in_facebook(new_lead, self.page)
+                    except Exception as fb_error:
+                        frappe.log_error(
+                            "Facebook Lead Creation Failed", 
+                            f"Lead {new_lead.name} created successfully but Facebook sync failed: {str(fb_error)}"
+                        )
 
                 except Exception as e:
                     # Log errors and traceback for better debugging
@@ -267,10 +270,17 @@ class FetchLeads():
         import json
         from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta_integraion_objects import UserData, CustomData, Payload
 
-        now = datetime.datetime.now()
-        unixtime = int(now.timestamp())
-        
-        if lead.custom_meta_lead_id:
+        try:
+            now = datetime.datetime.now()
+            unixtime = int(now.timestamp())
+            
+            if not lead.custom_meta_lead_id:
+                frappe.log_error("Lead Creation in Facebook", f"Lead {lead.name} has no custom_meta_lead_id")
+                return
+                
+            if not hasattr(page, 'pixel_id') or not hasattr(page, 'pixel_access_token'):
+                frappe.log_error("Lead Creation in Facebook", f"Page {page.name if hasattr(page, 'name') else 'Unknown'} missing pixel_id or pixel_access_token")
+                return
             # Create UserData and CustomData objects
             user_data = UserData(lead.custom_meta_lead_id)
             custom_data = CustomData("crm", "ERP Next")
@@ -307,12 +317,18 @@ class FetchLeads():
                 "title": "Lead Created in Facebook Successfully",
                 "public": 1,
                 "content": (
-                    "Lead Created in Facebook Successfully <br> Response: " 
-                    + str(response) + "<br> Payload: " + json.dumps(f_payload, indent=2)
+                    f"Lead Created in Facebook Successfully for Lead: {lead.name}<br>"
+                    f"Response: {str(response)}<br>"
+                    f"Payload: {json.dumps(f_payload, indent=2)}"
                 ),
-                "custom_reference_name": lead.name,
             })
             note.insert(ignore_permissions=True)
+            
+        except Exception as e:
+            frappe.log_error(
+                "Error in Facebook Lead Creation",
+                f"Failed to create Facebook lead for {lead.name}: {str(e)}\n\nTraceback: {frappe.get_traceback()}"
+            )
 
 class SyncNewAdd(Document):
     def validate(self):
@@ -352,35 +368,22 @@ class SyncNewAdd(Document):
             frappe.throw("Please map First Name Field")
 
 
+    def _create_custom_field(self, fieldname, label, fieldtype, insert_after):
+        """Create a custom field if it doesn't exist."""
+        if not frappe.get_meta(self.lead_doctype_name).has_field(fieldname):
+            frappe.get_doc({
+                "doctype": "Custom Field",
+                "dt": "Lead",
+                "fieldname": fieldname,
+                "label": label,
+                "fieldtype": fieldtype,
+                "insert_after": insert_after,
+                "read_only": 1,
+            }).insert(ignore_permissions=True)
+    
     def check_meta_fields_found(self):
-        if frappe.get_meta(self.lead_doctype_name).has_field("custom_meta_lead_id"):
-            pass
-        else:
-            # create custom fields
-            frappe.get_doc({
-                "doctype": "Custom Field",
-                "dt": "Lead",
-                "fieldname": "custom_meta_lead_id",
-                "label": "Custom Meta Lead ID",
-                "fieldtype": "Data",
-                "insert_after": "name",
-                "read_only": 1,
-
-            }).insert(ignore_permissions=True)
-        if frappe.get_meta(self.lead_doctype_name).has_field("custom_lead_json"):
-            pass
-        else:
-            # create custom fields
-            frappe.get_doc({
-                "doctype": "Custom Field",
-                "dt": "Lead",
-                "fieldname": "custom_lead_json",
-                "label": "Custom Lead JSON",
-                "fieldtype": "Text",
-                "insert_after": "custom_meta_lead_id",
-                "read_only": 1,
-
-            }).insert(ignore_permissions=True)
+        self._create_custom_field("custom_meta_lead_id", "Custom Meta Lead ID", "Data", "name")
+        self._create_custom_field("custom_lead_json", "Custom Lead JSON", "Text", "custom_meta_lead_id")
         
 
         

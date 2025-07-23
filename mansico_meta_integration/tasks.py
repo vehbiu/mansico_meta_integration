@@ -4,37 +4,45 @@ import frappe
 from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.sync_new_add import FetchLeads
 
 
-@frappe.whitelist()
-def all():
-    sync_new_add = frappe.db.get_all("Sync New Add", {"event_frequency": "All", "docstatus": 1}, pluck="name")
+def _process_sync_records_by_frequency(frequency):
+    """Process sync records for a given frequency."""
+    sync_new_add = frappe.db.get_all("Sync New Add", {"event_frequency": frequency, "docstatus": 1}, pluck="name")
     for name in sync_new_add:
         fetch = FetchLeads(name)
         fetch.fetch_leads()
+
+@frappe.whitelist()
+def all():
+    _process_sync_records_by_frequency("All")
 
 @frappe.whitelist()
 def daily():
-    sync_new_add = frappe.db.get_all("Sync New Add", {"event_frequency": "Daily", "docstatus": 1}, pluck="name")
-    for name in sync_new_add:
-        fetch = FetchLeads(name)
-        fetch.fetch_leads()
+    _process_sync_records_by_frequency("Daily")
 
 @frappe.whitelist()
 def hourly():
-    sync_new_add = frappe.db.get_all("Sync New Add", {"event_frequency": "Hourly", "docstatus": 1}, pluck="name")
-    for name in sync_new_add:
-        fetch = FetchLeads(name)
-        fetch.fetch_leads()
+    _process_sync_records_by_frequency("Hourly")
 
 @frappe.whitelist()
 def weekly():
-    sync_new_add = frappe.db.get_all("Sync New Add", {"event_frequency": "Weekly", "docstatus": 1}, pluck="name")
-    for name in sync_new_add:
-        fetch = FetchLeads(name)
-        fetch.fetch_leads()
+    _process_sync_records_by_frequency("Weekly")
 
 @frappe.whitelist()
 def monthly():
-    sync_new_add = frappe.db.get_all("Sync New Add", {"event_frequency": "Monthly", "docstatus": 1}, pluck="name")
-    for name in sync_new_add:
-        fetch = FetchLeads(name)
-        fetch.fetch_leads()
+    _process_sync_records_by_frequency("Monthly")
+
+@frappe.whitelist()
+def every_30_minutes():
+    _process_sync_records_by_frequency("Every 30 Minutes")
+
+@frappe.whitelist()
+def every_15_minutes():
+    _process_sync_records_by_frequency("Every 15 Minutes")
+
+@frappe.whitelist()
+def every_10_minutes():
+    _process_sync_records_by_frequency("Every 10 Minutes")
+
+@frappe.whitelist()
+def every_5_minutes():
+    _process_sync_records_by_frequency("Every 5 Minutes")

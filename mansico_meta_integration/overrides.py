@@ -21,7 +21,8 @@ def _validate_lead_status_change(doc, doctype):
         if old_doc and old_doc.status != doc.status:
             try:
                 lead = frappe.get_doc(doctype, doc.name)
-                FetchLeads.create_lead_in_facebook(lead)
+                page = frappe.get_doc("Page ID", lead.get("page_id", ""))
+                FetchLeads.create_lead_in_facebook(lead, page)
             except Exception as e:
                 frappe.log_error(
                     title=f"Error in {doctype} Facebook Lead Creation",
