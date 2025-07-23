@@ -26,4 +26,10 @@ scheduler_events = {
     "hourly": ["mansico_meta_integration.tasks.hourly"],
     "weekly": ["mansico_meta_integration.tasks.weekly"],
     "monthly": ["mansico_meta_integration.tasks.monthly"],
+    "cron": {
+        "*/5 * * * *": ["mansico_meta_integration.tasks.every_5_minutes"],
+        "*/10 * * * *": ["mansico_meta_integration.tasks.every_10_minutes"],
+        "*/15 * * * *": ["mansico_meta_integration.tasks.every_15_minutes"],
+        "*/30 * * * *": ["mansico_meta_integration.tasks.every_30_minutes"],
+    },
 }
