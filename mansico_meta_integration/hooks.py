@@ -15,25 +15,15 @@ doc_events = {
 
 
 doc_events["CRM Lead"] = {
-        "validate": "mansico_meta_integration.overrides.validate_crmlead",
-    }
+    "validate": "mansico_meta_integration.overrides.validate_crmlead",
+}
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-	"all": [
-		"mansico_meta_integration.tasks.all"
-	],
-	"daily": [
-		"mansico_meta_integration.tasks.daily"
-	],
-	"hourly": [
-		"mansico_meta_integration.tasks.hourly"
-	],
-	"weekly": [
-		"mansico_meta_integration.tasks.weekly"
-	],
-	"monthly": [
-		"mansico_meta_integration.tasks.monthly"
-	],
+    "all": ["mansico_meta_integration.tasks.all"],
+    "daily": ["mansico_meta_integration.tasks.daily"],
+    "hourly": ["mansico_meta_integration.tasks.hourly"],
+    "weekly": ["mansico_meta_integration.tasks.weekly"],
+    "monthly": ["mansico_meta_integration.tasks.monthly"],
 }
