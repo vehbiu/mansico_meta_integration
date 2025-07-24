@@ -275,8 +275,9 @@ class FetchLeads():
             lead_id = lead.get("id")
             if not lead_id:
                 continue
+            
+            lead_data = {}
                 
-            # Use database transaction to prevent race conditions
             try:
                 # Check for existing lead within transaction
                 existing_lead = frappe.db.get_value(
@@ -289,8 +290,6 @@ class FetchLeads():
                     # Lead already exists, skip creation
                     continue
                 
-                # Initialize an empty dictionary to store lead data dynamically
-                lead_data = {}            
                 # Loop through the field_data and extract the values dynamically
                 for field in lead.get("field_data", []):
                     field_name = field.get("name")
