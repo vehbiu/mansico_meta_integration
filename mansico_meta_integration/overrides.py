@@ -16,7 +16,7 @@ def _validate_lead_status_change(doc, doctype):
     if is_scheduler_disabled():
         frappe.throw(_("Please enable the Scheduler first."))
 
-    if not doc.is_new() and doc.custom_meta_lead_id:
+    if hasattr(doc, 'custom_meta_lead_id') and not doc.is_new() and doc.custom_meta_lead_id:
         old_doc = doc.get_doc_before_save()
         if old_doc and old_doc.status != doc.status:
             try:

@@ -98,7 +98,7 @@ class AppendForms():
         field_type_mapping = {
             "EMAIL": "email",
             "FULL_NAME": "first_name",
-            "PHONE": "phone"
+            "PHONE": "mobile_no"
         }
         
         for question in questions:
@@ -272,37 +272,53 @@ class FetchLeads():
         import traceback
 
         for lead in leads:
-            # Initialize an empty dictionary to store lead data dynamically
-            lead_data = {}            
-            # Loop through the field_data and extract the values dynamically
-            for field in lead.get("field_data", []):
-                field_name = field.get("name")
-                field_value = field.get("values", [None])[0]  # Get the first value or None if no value is present
+            lead_id = lead.get("id")
+            if not lead_id:
+                continue
                 
-                # Check if the field_name exists in the map_lead_fields of the current doc
-                for mapping in self.doc.map_lead_fields:
-                    if mapping.get("form_field") == field_name:
-                        # Dynamically map field_data to the Lead fields based on map_lead_fields
-                        lead_data[mapping.get("lead_field")] = field_value
+            # Use database transaction to prevent race conditions
+            try:
+                # Check for existing lead within transaction
+                existing_lead = frappe.db.get_value(
+                    self.doc.lead_doctype_name, 
+                    {"custom_meta_lead_id": lead_id}, 
+                    "name"
+                )
+                
+                if existing_lead:
+                    # Lead already exists, skip creation
+                    continue
+                
+                # Initialize an empty dictionary to store lead data dynamically
+                lead_data = {}            
+                # Loop through the field_data and extract the values dynamically
+                for field in lead.get("field_data", []):
+                    field_name = field.get("name")
+                    field_value = field.get("values", [None])[0]  # Get the first value or None if no value is present
+                    
+                    # Check if the field_name exists in the map_lead_fields of the current doc
+                    for mapping in self.doc.map_lead_fields:
+                        if mapping.get("form_field") == field_name:
+                            # Dynamically map field_data to the Lead fields based on map_lead_fields
+                            lead_data[mapping.get("lead_field")] = field_value
 
-            if lead.get("id") and not frappe.db.exists(self.doc.lead_doctype_name, {"custom_meta_lead_id": lead.get("id")}):
+                # Create a new Lead document dynamically based on available fields
+                new_lead_data = {
+                    "doctype": self.doc.lead_doctype_name,
+                    "custom_meta_lead_id": lead_id,
+                    "custom_lead_json": frappe._dict(lead),  
+                }
+
+                # Dynamically populate lead fields from lead_data
+                for field_name, field_value in lead_data.items():
+                    new_lead_data[field_name] = field_value
+
+                new_lead = frappe.get_doc(new_lead_data)
+                
                 try:
-
-                    # Create a new Lead document dynamically based on available fields
-                    new_lead_data = {
-                        "doctype": self.doc.lead_doctype_name,
-                        "custom_meta_lead_id": lead.get("id"),
-                        "custom_lead_json": frappe._dict(lead),  
-                    }
-
-                    # Dynamically populate lead fields from lead_data
-                    for field_name, field_value in lead_data.items():
-                        new_lead_data[field_name] = field_value
-
-                    new_lead = frappe.get_doc(new_lead_data)
-                    frappe
                     new_lead.insert(ignore_permissions=True)
-
+                    frappe.db.commit()  # Commit immediately to prevent duplicates
+                    
                     # Optionally, create the lead in Facebook (with error handling)
                     try:
                         FetchLeads.create_lead_in_facebook(new_lead, self.page)
@@ -311,12 +327,22 @@ class FetchLeads():
                             "Facebook Lead Creation Failed", 
                             f"Lead {new_lead.name} created successfully but Facebook sync failed: {str(fb_error)}"
                         )
+                        
+                except frappe.DuplicateEntryError:
+                    # Handle duplicate entry error gracefully
+                    frappe.db.rollback()
+                    frappe.log_error(
+                        "Duplicate Lead Prevented", 
+                        f"Attempted to create duplicate lead with ID: {lead_id}"
+                    )
+                    continue
 
-                except Exception as e:
-                    # Log errors and traceback for better debugging
-                    frappe.log_error("Error in Lead Creation", str(e))
-                    frappe.log_error("Traceback", str(traceback.format_exc()))
-                    frappe.log_error("Lead Data", str(lead_data))
+            except Exception as e:
+                # Log errors and traceback for better debugging
+                frappe.db.rollback()
+                frappe.log_error("Error in Lead Creation", str(e))
+                frappe.log_error("Traceback", str(traceback.format_exc()))
+                frappe.log_error("Lead Data", str(lead_data))
 
     
     @staticmethod
@@ -423,21 +449,26 @@ class SyncNewAdd(Document):
             frappe.throw("Please map First Name Field")
 
 
-    def _create_custom_field(self, fieldname, label, fieldtype, insert_after):
+    def _create_custom_field(self, fieldname, label, fieldtype, insert_after, unique=0):
         """Create a custom field if it doesn't exist."""
         if not frappe.get_meta(self.lead_doctype_name).has_field(fieldname):
-            frappe.get_doc({
+            field_data = {
                 "doctype": "Custom Field",
-                "dt": "Lead",
+                "dt": self.lead_doctype_name,
                 "fieldname": fieldname,
                 "label": label,
                 "fieldtype": fieldtype,
                 "insert_after": insert_after,
                 "read_only": 1,
-            }).insert(ignore_permissions=True)
+            }
+            
+            if unique:
+                field_data["unique"] = 1
+                
+            frappe.get_doc(field_data).insert(ignore_permissions=True)
     
     def check_meta_fields_found(self):
-        self._create_custom_field("custom_meta_lead_id", "Custom Meta Lead ID", "Data", "name")
+        self._create_custom_field("custom_meta_lead_id", "Custom Meta Lead ID", "Data", "name", unique=1)
         self._create_custom_field("custom_lead_json", "Custom Lead JSON", "Text", "custom_meta_lead_id")
         
 
