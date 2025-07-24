@@ -35,20 +35,40 @@ class RequestPageAccessToken():
         self.request = request
 
     def get_page_access_token(self):
-        response = requests.get(self.request.get_url, params=self.request.params, json=self.request.params) 
-        _handle_api_error(response, self.request)
-        self.page_access_token = frappe._dict(response.json()).get("access_token")
-        return self.page_access_token
+        try:
+            response = requests.get(
+                self.request.get_url, 
+                params=self.request.params, 
+                json=self.request.params,
+                timeout=30  # 30 second timeout
+            )
+            _handle_api_error(response, self.request)
+            self.page_access_token = frappe._dict(response.json()).get("access_token")
+            return self.page_access_token
+        except requests.exceptions.Timeout:
+            frappe.throw(f"Request timed out while getting page access token for URL: {self.request.get_url}", title="Timeout Error")
+        except requests.exceptions.RequestException as e:
+            frappe.throw(f"Network error while getting page access token: {str(e)}", title="Network Error")
 
 class RequestLeadGenFroms():
     def __init__(self, request):
         self.request = request
 
     def get_lead_forms(self):
-        response = requests.get(self.request.get_url, params=self.request.params, json=self.request.params)
-        _handle_api_error(response, self.request)
-        self.lead_forms = frappe._dict(response.json())
-        return self.lead_forms
+        try:
+            response = requests.get(
+                self.request.get_url, 
+                params=self.request.params, 
+                json=self.request.params,
+                timeout=30  # 30 second timeout
+            )
+            _handle_api_error(response, self.request)
+            self.lead_forms = frappe._dict(response.json())
+            return self.lead_forms
+        except requests.exceptions.Timeout:
+            frappe.throw(f"Request timed out while getting lead forms for URL: {self.request.get_url}", title="Timeout Error")
+        except requests.exceptions.RequestException as e:
+            frappe.throw(f"Network error while getting lead forms: {str(e)}", title="Network Error")
 
 class AppendForms():
     def __init__(self, lead_forms, doc):
@@ -76,9 +96,9 @@ class AppendForms():
 
     def set_map_lead_fields(self, questions, form_fields):
         field_type_mapping = {
-            "EMAIL": "email_id",
+            "EMAIL": "email",
             "FULL_NAME": "first_name",
-            "PHONE": "phone_number"
+            "PHONE": "phone"
         }
         
         for question in questions:
@@ -150,10 +170,37 @@ class ServerScript():
 class RequestSendLead():
     def __init__(self, request):
         self.request = request
-    def send_lead(self):
-        response = requests.post(self.request.get_url, params=self.request.params, json=self.request.f_payload)
-        _handle_api_error(response, self.request)
-        return json.dumps(response.json())
+    def send_lead(self, max_retries=3):
+        import time
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    self.request.get_url, 
+                    params=self.request.params, 
+                    json=self.request.f_payload,
+                    timeout=30  # 30 second timeout
+                )
+                _handle_api_error(response, self.request)
+                return json.dumps(response.json())
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 5  # Exponential backoff: 5, 10, 15 seconds
+                    frappe.log_error("Facebook API Timeout - Retrying", f"Attempt {attempt + 1} timed out, retrying in {wait_time} seconds")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    frappe.log_error("Facebook API Timeout - Final", f"All {max_retries} attempts timed out for URL: {self.request.get_url}")
+                    return json.dumps({"error": "timeout", "message": f"Request timed out after {max_retries} attempts"})
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 5
+                    frappe.log_error("Facebook API Network Error - Retrying", f"Attempt {attempt + 1} failed: {str(e)}, retrying in {wait_time} seconds")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    frappe.log_error("Facebook API Network Error - Final", f"All {max_retries} attempts failed: {str(e)}")
+                    return json.dumps({"error": "network_error", "message": str(e)})
 
 
 class FetchLeads():
@@ -207,9 +254,16 @@ class FetchLeads():
         if lead_forms.paging.get("next"):
             self.create_lead(lead_forms.get("data"))
             next_page = lead_forms.paging.get("next")
-            response = requests.get(next_page)
-            lead_forms = frappe._dict(response.json())
-            return self.paginate_lead_forms(lead_forms)
+            try:
+                response = requests.get(next_page, timeout=30)
+                lead_forms = frappe._dict(response.json())
+                return self.paginate_lead_forms(lead_forms)
+            except requests.exceptions.Timeout:
+                frappe.log_error("Pagination Timeout", f"Request timed out while paginating lead forms for URL: {next_page}")
+                return lead_forms
+            except requests.exceptions.RequestException as e:
+                frappe.log_error("Pagination Network Error", f"Network error while paginating lead forms: {str(e)}")
+                return lead_forms
         else:
             if lead_forms:
                 self.create_lead(lead_forms.get("data"))
@@ -246,6 +300,7 @@ class FetchLeads():
                         new_lead_data[field_name] = field_value
 
                     new_lead = frappe.get_doc(new_lead_data)
+                    frappe
                     new_lead.insert(ignore_permissions=True)
 
                     # Optionally, create the lead in Facebook (with error handling)
