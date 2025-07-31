@@ -1,46 +1,63 @@
 # Copyright (c) 2023, mansy and contributors
 # For license information, please see license.txt
 
+import datetime
+import json
+import time
+import traceback
+
+import requests
 import frappe
 from frappe.model.document import Document
+
+from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta_integraion_objects import UserData, CustomData, Payload
+
 
 @frappe.whitelist()
 def get_credentials():
     return frappe.get_doc("Meta Facebook Settings")
 
-import requests
-import json
-
 class Request:
+    """Handle Facebook Graph API request construction."""
+    
     def __init__(self, url, version, page_id, f_payload=None, params=None):
         self.url = url
-        self.version = 'v' + str(version)
+        self.version = f'v{version}'
         self.page_id = page_id
         self.f_payload = f_payload
         self.params = params
+    
     @property
     def get_url(self):
-        return self.url + "/" + self.version + "/" + self.page_id
+        return f"{self.url}/{self.version}/{self.page_id}"
 
 def _handle_api_error(response, request, title="Error"):
     """Centralized error handling for API responses."""
-    error_data = frappe._dict(response.json()).get("error")
-    if error_data:
-        error_message = f"url : {request.get_url}<br>params : {request.params}<br><br>"
-        error_message += "<br>".join([f"{key} : {value}" for key, value in error_data.items()])
-        frappe.throw(error_message, title=title)
+    try:
+        error_data = frappe._dict(response.json()).get("error")
+        if error_data:
+            error_message = f"url : {request.get_url}<br>params : {request.params}<br><br>"
+            error_message += "<br>".join([f"{key} : {value}" for key, value in error_data.items()])
+            frappe.throw(error_message, title=title)
+    except (ValueError, KeyError):
+        # Handle cases where response is not valid JSON
+        frappe.throw(f"API Error: {response.text}", title=title)
 
-class RequestPageAccessToken():
+class RequestPageAccessToken:
+    """Handle page access token requests."""
+    
     def __init__(self, request):
         self.request = request
+        self.page_access_token = None
 
     def get_page_access_token(self):
+        """Get page access token from Facebook API."""
         try:
             response = requests.get(
                 self.request.get_url, 
                 params=self.request.params, 
                 json=self.request.params,
-                timeout=30  # 30 second timeout
+                timeout=30
             )
             _handle_api_error(response, self.request)
             self.page_access_token = frappe._dict(response.json()).get("access_token")
@@ -50,17 +67,21 @@ class RequestPageAccessToken():
         except requests.exceptions.RequestException as e:
             frappe.throw(f"Network error while getting page access token: {str(e)}", title="Network Error")
 
-class RequestLeadGenFroms():
+class RequestLeadGenForms:
+    """Handle lead generation form requests."""
+    
     def __init__(self, request):
         self.request = request
+        self.lead_forms = None
 
     def get_lead_forms(self):
+        """Get lead forms from Facebook API."""
         try:
             response = requests.get(
                 self.request.get_url, 
                 params=self.request.params, 
                 json=self.request.params,
-                timeout=30  # 30 second timeout
+                timeout=30
             )
             _handle_api_error(response, self.request)
             self.lead_forms = frappe._dict(response.json())
@@ -70,31 +91,38 @@ class RequestLeadGenFroms():
         except requests.exceptions.RequestException as e:
             frappe.throw(f"Network error while getting lead forms: {str(e)}", title="Network Error")
 
-class AppendForms():
+class AppendForms:
+    """Handle appending forms to document."""
+    
     def __init__(self, lead_forms, doc):
         self.lead_forms = lead_forms
         self.doc = doc
+
     def append_forms(self):
         if self.doc.force_fetch:
             self.doc.set("table_hsya", [])
-            
 
-            for lead_form in self.lead_forms.get("data"):
+            for lead_form in self.lead_forms.get("data", []):
                 self.doc.append("table_hsya", {
                     "form_id": lead_form.get("id"),
                     "form_name": lead_form.get("name"),
                     "created_time": lead_form.get("created_time"),
                     "leads_count": lead_form.get("leads_count"),
                     "page": lead_form.get("page"),
-                    "questions": frappe._dict({"questions":lead_form.get("questions")}),
+                    "questions": frappe._dict({"questions": lead_form.get("questions")}),
                 })
+
         if self.doc.fetch_map_lead_fields:
             self.doc.set("map_lead_fields", [])
-            form_fields = []  # Initialize an empty list to track form fields
+            form_fields = []
             for lead in self.doc.table_hsya:
-                self.set_map_lead_fields(json.loads(lead.questions).get("questions") if isinstance(lead.questions, str) else lead.questions.get("questions"), form_fields)
+                questions = lead.questions
+                if isinstance(questions, str):
+                    questions = json.loads(questions)
+                self.set_map_lead_fields(questions.get("questions", []), form_fields)
 
     def set_map_lead_fields(self, questions, form_fields):
+        """Map form fields to lead fields."""
         field_type_mapping = {
             "EMAIL": "email",
             "FULL_NAME": "first_name",
@@ -103,7 +131,7 @@ class AppendForms():
         
         for question in questions:
             key = question.get("key")
-            if key not in form_fields:
+            if key and key not in form_fields:
                 question_type = question.get("type")
                 lead_field = field_type_mapping.get(question_type, key)
                 
@@ -116,9 +144,12 @@ class AppendForms():
                 form_fields.append(key)
 
       
-class ServerScript():
+class ServerScript:
+    """Handle server script creation for scheduled tasks."""
+    
     def __init__(self, doc):
         self.doc = doc
+        self.server_script = None
     
     def get_frappe_frequency(self):
         """Map custom frequencies to valid Frappe scheduler frequencies."""
@@ -141,37 +172,40 @@ class ServerScript():
         return cron_mapping.get(self.doc.event_frequency)
     
     def create_server_script(self):
+        """Create server script for scheduled task execution."""
+        script_name = str(self.doc.name).replace("-", "_").lower()
         script_data = {
             "doctype": "Server Script",
-            "name": str(str(self.doc.name).replace("-", "_")).lower(),
+            "name": script_name,
             "script_type": "Scheduler Event",
             "event_frequency": self.get_frappe_frequency(),
             "module": "Mansico Meta Integration",
             "script": self.generate_script()
         }
         
-        # Add cron format for minute-based frequencies
         cron_format = self.get_cron_format()
         if cron_format:
             script_data["cron_format"] = cron_format
             
         self.server_script = frappe.get_doc(script_data)
     def generate_script(self):
-        _script = ""
-
-        _script += """from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.sync_new_add import FetchLeads\n"""
-        _script += """import frappe\n"""
-        _script += """fetch = FetchLeads("{0}")\n""".format(str(str(self.doc.name).replace("-", "_")).lower())
-        _script += """fetch.fetch_leads()\n"""
-        return _script
+        """Generate the script content for scheduled execution."""
+        script_name = str(self.doc.name).replace("-", "_").lower()
+        return (
+            "from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.sync_new_add import FetchLeads\n"
+            "import frappe\n"
+            f"fetch = FetchLeads('{script_name}')\n"
+            "fetch.fetch_leads()\n"
+        )
     
 
 
-class RequestSendLead():
+class RequestSendLead:
+    """Handle sending lead data to Facebook API."""
+    
     def __init__(self, request):
         self.request = request
     def send_lead(self, max_retries=3):
-        import time
         
         for attempt in range(max_retries):
             try:
@@ -203,7 +237,7 @@ class RequestSendLead():
                     return json.dumps({"error": "network_error", "message": str(e)})
 
 
-class FetchLeads():
+class FetchLeads:
     def __init__(self, name):
         self.name = name
 
@@ -237,8 +271,8 @@ class FetchLeads():
                     field_data,form_id,id,home_listing,is_organic,partner_name,\
                         platform,post,retailer_item_id,vehicle"
                                               })
-            # init RequestLeadGenFroms
-            request_lead_gen_forms = RequestLeadGenFroms(request)
+            # init RequestLeadGenForms
+            request_lead_gen_forms = RequestLeadGenForms(request)
             # get lead forms
             request_lead_gen_forms.get_lead_forms()
 
@@ -269,8 +303,7 @@ class FetchLeads():
                 self.create_lead(lead_forms.get("data"))
             return lead_forms
     def create_lead(self, leads):
-        import traceback
-
+        """Create leads in ERPNext from Facebook API data."""
         for lead in leads:
             lead_id = lead.get("id")
             if not lead_id:
@@ -287,38 +320,35 @@ class FetchLeads():
                 )
                 
                 if existing_lead:
-                    # Lead already exists, skip creation
                     continue
                 
-                # Loop through the field_data and extract the values dynamically
+                # Map field data to lead fields
                 for field in lead.get("field_data", []):
                     field_name = field.get("name")
-                    field_value = field.get("values", [None])[0]  # Get the first value or None if no value is present
+                    field_values = field.get("values", [])
+                    field_value = field_values[0] if field_values else None
                     
-                    # Check if the field_name exists in the map_lead_fields of the current doc
+                    # Find mapping for this field
                     for mapping in self.doc.map_lead_fields:
                         if mapping.get("form_field") == field_name:
-                            # Dynamically map field_data to the Lead fields based on map_lead_fields
                             lead_data[mapping.get("lead_field")] = field_value
+                            break
 
-                # Create a new Lead document dynamically based on available fields
+                # Create new lead document
                 new_lead_data = {
                     "doctype": self.doc.lead_doctype_name,
                     "custom_meta_lead_id": lead_id,
                     "custom_lead_json": frappe._dict(lead),  
                 }
-
-                # Dynamically populate lead fields from lead_data
-                for field_name, field_value in lead_data.items():
-                    new_lead_data[field_name] = field_value
+                new_lead_data.update(lead_data)
 
                 new_lead = frappe.get_doc(new_lead_data)
                 
                 try:
                     new_lead.insert(ignore_permissions=True)
-                    frappe.db.commit()  # Commit immediately to prevent duplicates
+                    frappe.db.commit()
                     
-                    # Optionally, create the lead in Facebook (with error handling)
+                    # Create lead in Facebook
                     try:
                         FetchLeads.create_lead_in_facebook(new_lead, self.page)
                     except Exception as fb_error:
@@ -339,28 +369,26 @@ class FetchLeads():
             except Exception as e:
                 # Log errors and traceback for better debugging
                 frappe.db.rollback()
-                frappe.log_error("Error in Lead Creation", str(e))
-                frappe.log_error("Traceback", str(traceback.format_exc()))
-                frappe.log_error("Lead Data", str(lead_data))
+                frappe.log_error("Lead Document Creation Failed", f"Failed to create Lead document from Facebook data: {str(e)}")
+                frappe.log_error("Lead Creation Error Traceback", str(traceback.format_exc()))
+                frappe.log_error("Failed Lead Data Context", f"Lead data that caused creation failure: {str(lead_data)}")
 
     
     @staticmethod
     def create_lead_in_facebook(lead, page):
-        import datetime
-        import json
-        from mansico_meta_integration.mansico_meta_integration.doctype.sync_new_add.meta_integraion_objects import UserData, CustomData, Payload
 
         try:
             now = datetime.datetime.now()
             unixtime = int(now.timestamp())
             
             if not lead.custom_meta_lead_id:
-                frappe.log_error("Lead Creation in Facebook", f"Lead {lead.name} has no custom_meta_lead_id")
+                frappe.log_error("Facebook Lead Sync Validation Failed", f"Lead {lead.name} has no custom_meta_lead_id - cannot sync to Facebook")
                 return
                 
             if not hasattr(page, 'pixel_id') or not hasattr(page, 'pixel_access_token'):
-                frappe.log_error("Lead Creation in Facebook", f"Page {page.name if hasattr(page, 'name') else 'Unknown'} missing pixel_id or pixel_access_token")
+                frappe.log_error("Facebook Page Configuration Error", f"Page {page.name if hasattr(page, 'name') else 'Unknown'} missing pixel_id or pixel_access_token - cannot sync lead to Facebook")
                 return
+
             # Create UserData and CustomData objects
             user_data = UserData(lead.custom_meta_lead_id)
             custom_data = CustomData("crm", "ERP Next")
@@ -411,7 +439,10 @@ class FetchLeads():
             )
 
 class SyncNewAdd(Document):
+    """Main document class for syncing Facebook leads."""
+    
     def validate(self):
+        """Validate and fetch forms from Facebook API."""
         defaults = get_credentials()
         #  init Request
         request = Request(defaults.api_url, defaults.graph_api_version,
@@ -423,14 +454,14 @@ class SyncNewAdd(Document):
         request_page_access_token.get_page_access_token()
         # init Request
         request = Request(defaults.api_url, defaults.graph_api_version,
-         self.page_id + f"/leadgen_forms", None, params={"access_token": request_page_access_token.page_access_token,
+         self.page_id + "/leadgen_forms", None, params={"access_token": request_page_access_token.page_access_token,
          "fields": "name,id,created_time,leads_count,page,page_id,\
          questions,leads {\
             ad_id,campaign_id,adset_id,campaign_name,ad_name,form_id,id,\
                 adset_name,created_time\
                     }"})
-        # init RequestLeadGenFroms
-        request_lead_gen_forms = RequestLeadGenFroms(request)
+        # init RequestLeadGenForms
+        request_lead_gen_forms = RequestLeadGenForms(request)
         # get lead forms
         request_lead_gen_forms.get_lead_forms()
         # init AppendForms

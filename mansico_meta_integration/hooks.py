@@ -8,15 +8,15 @@ required_apps = ["erpnext"]
 
 doc_events = {
     "Lead": {
-        # will run before a ToDo record is inserted into database
+        # will run before a Lead record is inserted into database
         "validate": "mansico_meta_integration.overrides.validate_lead",
+    },
+    "CRM Lead": {
+        # will run before a Frappe CRM Lead record is inserted into database
+        "validate": "mansico_meta_integration.overrides.validate_crmlead",
     }
 }
 
-
-doc_events["CRM Lead"] = {
-    "validate": "mansico_meta_integration.overrides.validate_crmlead",
-}
 # Scheduled Tasks
 # ---------------
 
